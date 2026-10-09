@@ -15,6 +15,7 @@ public final class GlideServer: @unchecked Sendable {
     public var onStatus: (@Sendable (Status) -> Void)?
     /// A peer connected but failed the TLS handshake (wrong PIN or not a Glide client).
     public var onFailedHandshake: (@Sendable () -> Void)?
+    public var onLog: (@Sendable (String) -> Void)?
 
     private let queue = DispatchQueue(label: "glide.server", qos: .userInteractive)
     private var listener: NWListener?
@@ -27,6 +28,7 @@ public final class GlideServer: @unchecked Sendable {
         let l = try NWListener(using: GlideService.parameters(pin: pin))
         l.service = NWListener.Service(name: name, type: GlideService.bonjourType)
         l.stateUpdateHandler = { [weak self] state in
+            self?.onLog?("listener: \(state)")
             switch state {
             case .ready: self?.onStatus?(.listening)
             case let .failed(error): self?.onStatus?(.failed(error.localizedDescription))
@@ -60,9 +62,11 @@ public final class GlideServer: @unchecked Sendable {
 
     private func accept(_ connection: NWConnection) {
         var authenticated = false
+        onLog?("incoming connection from \(connection.endpoint)")
 
         connection.stateUpdateHandler = { [weak self, weak connection] state in
             guard let self, let connection else { return }
+            self.onLog?("incoming connection state: \(state)")
             switch state {
             case .ready:
                 authenticated = true

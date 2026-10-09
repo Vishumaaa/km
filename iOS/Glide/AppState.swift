@@ -7,6 +7,7 @@ final class AppState: ObservableObject {
     @Published var macs: [DiscoveredMac] = []
     @Published var connection: GlideClient.State = .idle
     @Published var errorMessage: String?
+    @Published var log: [String] = []
     @Published var tuning: Tuning = Tuning.load() {
         didSet { tuning.save() }
     }
@@ -18,6 +19,8 @@ final class AppState: ObservableObject {
     private var currentMac: DiscoveredMac?
 
     init() {
+        browser.onLog = { [weak self] line in Task { @MainActor in self?.appendLog(line) } }
+        client.onLog = { [weak self] line in Task { @MainActor in self?.appendLog(line) } }
         browser.onChange = { [weak self] macs in
             Task { @MainActor in self?.macs = macs }
         }
@@ -42,6 +45,11 @@ final class AppState: ObservableObject {
                 self.handle(.failed("Timed out"))
             }
         }
+    }
+
+    private func appendLog(_ line: String) {
+        log.append(line)
+        if log.count > 12 { log.removeFirst(log.count - 12) }
     }
 
     func disconnect() {

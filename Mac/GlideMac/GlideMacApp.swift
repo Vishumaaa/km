@@ -54,6 +54,13 @@ struct MenuView: View {
                 }
             }
 
+            if !model.log.isEmpty {
+                Text(model.log.suffix(5).joined(separator: "\n"))
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
             Divider()
             HStack {
                 Button("New PIN") { model.newPIN() }

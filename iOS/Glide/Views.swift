@@ -46,6 +46,13 @@ struct DiscoveryView: View {
                 if let message = app.errorMessage {
                     Section { Text(message).foregroundStyle(.red) }
                 }
+                if !app.log.isEmpty {
+                    Section("Debug log") {
+                        Text(app.log.joined(separator: "\n"))
+                            .font(.system(size: 10, design: .monospaced))
+                            .textSelection(.enabled)
+                    }
+                }
             }
             .navigationTitle("Glide")
             .alert("Enter PIN", isPresented: Binding(get: { pending != nil },
@@ -61,12 +68,9 @@ struct DiscoveryView: View {
     }
 
     private func choose(_ mac: DiscoveredMac) {
-        if let saved = app.savedPIN(for: mac) {
-            app.connect(mac, pin: saved)
-        } else {
-            pin = ""
-            pending = mac
-        }
+        // Always ask: a previously saved wrong PIN used to be reused silently.
+        pin = app.savedPIN(for: mac) ?? ""
+        pending = mac
     }
 }
 

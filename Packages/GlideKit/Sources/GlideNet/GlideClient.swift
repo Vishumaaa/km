@@ -12,6 +12,7 @@ public struct DiscoveredMac: Identifiable, Hashable {
 /// iPhone side: finds Macs advertising Glide on the local network.
 public final class GlideBrowser: @unchecked Sendable {
     public var onChange: (@Sendable ([DiscoveredMac]) -> Void)?
+    public var onLog: (@Sendable (String) -> Void)?
     private var browser: NWBrowser?
 
     public init() {}
@@ -26,8 +27,10 @@ public final class GlideBrowser: @unchecked Sendable {
                 guard case let .service(name, _, _, _) = result.endpoint else { return nil }
                 return DiscoveredMac(id: name, name: name, endpoint: result.endpoint)
             }.sorted { $0.name < $1.name }
+            self?.onLog?("found \(macs.count) Mac(s): \(macs.map(\.name))")
             self?.onChange?(macs)
         }
+        b.stateUpdateHandler = { [weak self] state in self?.onLog?("browser: \(state)") }
         b.start(queue: .main)
         browser = b
     }
@@ -45,6 +48,8 @@ public final class GlideClient: @unchecked Sendable {
     }
 
     public var onState: (@Sendable (State) -> Void)?
+    /// Human-readable trace of every connection state change, for on-screen debugging.
+    public var onLog: (@Sendable (String) -> Void)?
     private var connection: NWConnection?
     private let queue = DispatchQueue(label: "glide.client", qos: .userInteractive)
 
@@ -54,9 +59,11 @@ public final class GlideClient: @unchecked Sendable {
         disconnect()
         let c = NWConnection(to: endpoint, using: GlideService.parameters(pin: pin))
         connection = c
+        onLog?("connecting to \(endpoint)")
         onState?(.connecting)
         c.stateUpdateHandler = { [weak self, weak c] state in
             guard let self, let c, self.connection === c else { return }
+            self.onLog?("connection: \(state)")
             switch state {
             case .ready:
                 self.onState?(.ready)

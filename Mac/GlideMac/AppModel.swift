@@ -9,6 +9,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var pin: String
     @Published private(set) var status: GlideServer.Status = .stopped
     @Published private(set) var accessibilityTrusted = AXIsProcessTrusted()
+    @Published private(set) var log: [String] = []
 
     private let server = GlideServer()
     private let injector = InputInjector()
@@ -26,6 +27,10 @@ final class AppModel: ObservableObject {
         started = true
 
         let injector = injector
+        server.onLog = { [weak self] line in
+            print("Glide: \(line)")
+            Task { @MainActor in self?.appendLog(line) }
+        }
         server.onEvents = { events in injector.handle(events) }
         server.onDisconnect = { injector.releaseAll() }
         server.onStatus = { [weak self] status in
@@ -44,6 +49,11 @@ final class AppModel: ObservableObject {
             Task { @MainActor in self?.accessibilityTrusted = AXIsProcessTrusted() }
         }
         if !accessibilityTrusted { requestAccessibility() }
+    }
+
+    private func appendLog(_ line: String) {
+        log.append(line)
+        if log.count > 8 { log.removeFirst(log.count - 8) }
     }
 
     func requestAccessibility() {
