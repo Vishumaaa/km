@@ -8,6 +8,8 @@ final class AppState: ObservableObject {
     @Published var connection: GlideClient.State = .idle
     @Published var errorMessage: String?
     @Published var log: [String] = []
+    @Published var lastGesture: String?
+    private var gestureClear: Task<Void, Never>?
     @Published var tuning: Tuning = Tuning.load() {
         didSet { tuning.save() }
     }
@@ -65,6 +67,37 @@ final class AppState: ObservableObject {
 
     func send(_ events: [InputEvent]) {
         client.send(events)
+        guard let label = Self.label(for: events) else { return }
+        lastGesture = label
+        gestureClear?.cancel()
+        gestureClear = Task {
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            if !Task.isCancelled { lastGesture = nil }
+        }
+    }
+
+    /// Short on-screen name for what was just sent, so you can see how a touch was interpreted.
+    private static func label(for events: [InputEvent]) -> String? {
+        var leftDown = false, leftUp = false
+        var other: String?
+        for event in events {
+            switch event {
+            case let .button(.left, down):
+                if down { leftDown = true } else { leftUp = true }
+            case let .button(.right, down):
+                if down { other = "Right click" }
+            case let .action(action):
+                other = "Swipe: \(action)"
+            case .scroll(_, _, .began):
+                other = other ?? "Scroll"
+            default:
+                break
+            }
+        }
+        if leftDown && leftUp { return "Click" }
+        if leftDown { return "Press (drag)" }
+        if leftUp { return "Release" }
+        return other
     }
 
     private func handle(_ state: GlideClient.State) {

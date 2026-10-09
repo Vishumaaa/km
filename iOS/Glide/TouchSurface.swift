@@ -10,6 +10,8 @@ final class TouchSurfaceView: UIView {
     private var pipeline = TrackpadPipeline()
     private var ids: [ObjectIdentifier: Int] = [:]
     private var nextID = 0
+    /// Touches that began in the edge margin (a thumb holding the phone). Ignored until lifted.
+    private var ignored: Set<Int> = []
     private let haptics = Haptics()
 
     override init(frame: CGRect) {
@@ -30,6 +32,11 @@ final class TouchSurfaceView: UIView {
         haptics.strength = tuning.hapticStrength
     }
 
+    private func isInEdgeMargin(_ p: CGPoint) -> Bool {
+        let m = CGFloat(tuning.edgeMargin)
+        return m > 0 && (p.x < m || p.x > bounds.width - m)
+    }
+
     override func didMoveToWindow() {
         super.didMoveToWindow()
         if window != nil { haptics.prepare() }
@@ -47,6 +54,7 @@ final class TouchSurfaceView: UIView {
 
         // One finger: replay every coalesced sample (up to 120 Hz+) for the smoothest tracking.
         if active.count == 1, touches.count == 1, let touch = touches.first,
+           ids[ObjectIdentifier(touch)] == active[0].id,
            let coalesced = event.coalescedTouches(for: touch), coalesced.count > 1 {
             let id = active[0].id
             var out: [InputEvent] = []
@@ -63,11 +71,11 @@ final class TouchSurfaceView: UIView {
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         process(event)
-        for t in touches { ids[ObjectIdentifier(t)] = nil }
+        forget(touches)
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
-        for t in touches { ids[ObjectIdentifier(t)] = nil }
+        forget(touches)
         send(pipeline.cancel(at: event?.timestamp ?? ProcessInfo.processInfo.systemUptime))
     }
 
@@ -76,6 +84,13 @@ final class TouchSurfaceView: UIView {
     private func process(_ event: UIEvent?) {
         let time = event?.timestamp ?? ProcessInfo.processInfo.systemUptime
         send(pipeline.handle(touches: snapshot(event), time: time))
+    }
+
+    private func forget(_ touches: Set<UITouch>) {
+        for t in touches {
+            if let id = ids[ObjectIdentifier(t)] { ignored.remove(id) }
+            ids[ObjectIdentifier(t)] = nil
+        }
     }
 
     private func id(for touch: UITouch) -> Int {
@@ -91,9 +106,12 @@ final class TouchSurfaceView: UIView {
         guard let all = event?.allTouches else { return [] }
         return all
             .filter { $0.phase != .ended && $0.phase != .cancelled }
-            .map { touch -> Touch in
+            .compactMap { touch -> Touch? in
                 let p = touch.location(in: self)
-                return Touch(id: id(for: touch), x: Float(p.x), y: Float(p.y))
+                let touchID = id(for: touch)
+                if touch.phase == .began && isInEdgeMargin(p) { ignored.insert(touchID) }
+                if ignored.contains(touchID) { return nil }
+                return Touch(id: touchID, x: Float(p.x), y: Float(p.y))
             }
             .sorted { $0.id < $1.id }
     }

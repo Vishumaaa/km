@@ -91,6 +91,15 @@ struct TrackpadScreen: View {
             .foregroundStyle(.white.opacity(0.35))
             .padding()
         }
+        .overlay(alignment: .bottom) {
+            if let gesture = app.lastGesture {
+                Text(gesture)
+                    .font(.footnote.monospaced())
+                    .foregroundStyle(.white.opacity(0.55))
+                    .padding(.bottom, 14)
+                    .allowsHitTesting(false)
+            }
+        }
         .statusBarHidden()
         .persistentSystemOverlays(.hidden)
         .defersSystemGestures(on: .all) // first edge swipe won't trigger Home / Control Center
@@ -119,6 +128,9 @@ struct TuningView: View {
                     slider("Slow-speed gain", value: $app.tuning.lowGain, range: 0.5...3)
                     slider("Fast-speed gain", value: $app.tuning.highGain, range: 1...10)
                     slider("Acceleration knee", value: $app.tuning.kneeSpeed, range: 150...2000)
+                }
+                Section("Holding the phone") {
+                    slider("Edge rejection (thumbs)", value: $app.tuning.edgeMargin, range: 0...100)
                 }
                 Section("Scrolling") {
                     Toggle("Natural scrolling", isOn: $app.tuning.naturalScrolling)

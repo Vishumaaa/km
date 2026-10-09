@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import GlideCore
 import GlideNet
 
 @MainActor
@@ -31,7 +32,14 @@ final class AppModel: ObservableObject {
             print("Glide: \(line)")
             Task { @MainActor in self?.appendLog(line) }
         }
-        server.onEvents = { events in injector.handle(events) }
+        server.onEvents = { [weak self] events in
+            injector.handle(events)
+            for case let .button(button, down) in events {
+                let line = "button \(button) \(down ? "down" : "up")"
+                print("Glide: \(line)")
+                Task { @MainActor in self?.appendLog(line) }
+            }
+        }
         server.onDisconnect = { injector.releaseAll() }
         server.onStatus = { [weak self] status in
             print("Glide: server status \(status)")

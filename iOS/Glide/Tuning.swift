@@ -9,6 +9,8 @@ struct Tuning: Codable, Equatable {
     var naturalScrolling = true
     var hapticsEnabled = true
     var hapticStrength: Float = 1.0
+    /// Touches that start this close (points) to the left/right edge are ignored (resting thumbs).
+    var edgeMargin: Float = 36
 
     private static let key = "tuning.v1"
 
@@ -25,6 +27,7 @@ struct Tuning: Codable, Equatable {
         naturalScrolling = try c.decodeIfPresent(Bool.self, forKey: .naturalScrolling) ?? d.naturalScrolling
         hapticsEnabled = try c.decodeIfPresent(Bool.self, forKey: .hapticsEnabled) ?? d.hapticsEnabled
         hapticStrength = try c.decodeIfPresent(Float.self, forKey: .hapticStrength) ?? d.hapticStrength
+        edgeMargin = try c.decodeIfPresent(Float.self, forKey: .edgeMargin) ?? d.edgeMargin
     }
 
     static func load() -> Tuning {
