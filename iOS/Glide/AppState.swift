@@ -17,6 +17,7 @@ final class AppState: ObservableObject {
     private let browser = GlideBrowser()
     private let client = GlideClient()
     private var currentMac: DiscoveredMac?
+    private var attempt = 0
 
     init() {
         browser.onLog = { [weak self] line in Task { @MainActor in self?.appendLog(line) } }
@@ -38,9 +39,11 @@ final class AppState: ObservableObject {
         client.connect(to: mac.endpoint, pin: pin)
 
         // Don't hang forever on a bad PIN, a sleeping Mac, or a blocked network.
+        attempt += 1
+        let thisAttempt = attempt
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 10_000_000_000)
-            if self.connection == .connecting {
+            if self.attempt == thisAttempt && self.connection == .connecting {
                 self.client.disconnect()
                 self.handle(.failed("Timed out"))
             }
@@ -65,8 +68,13 @@ final class AppState: ObservableObject {
     }
 
     private func handle(_ state: GlideClient.State) {
+        let wasConnected = (connection == .ready)
         connection = state
-        if case .failed = state {
+        guard case .failed = state else { return }
+        if wasConnected {
+            // The session worked and then dropped: the PIN is fine, keep it.
+            errorMessage = "Lost the connection to your Mac. Tap it to reconnect."
+        } else {
             // Most likely a wrong/rotated PIN, or the Mac is asleep or on another network.
             if let mac = currentMac { UserDefaults.standard.removeObject(forKey: pinKey(mac)) }
             errorMessage = "Couldn't connect. Check the PIN on your Mac and that both devices are on the same Wi-Fi."

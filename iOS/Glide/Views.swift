@@ -93,8 +93,15 @@ struct TrackpadScreen: View {
         }
         .statusBarHidden()
         .persistentSystemOverlays(.hidden)
-        .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
-        .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
+        .defersSystemGestures(on: .all) // first edge swipe won't trigger Home / Control Center
+        .onAppear {
+            UIApplication.shared.isIdleTimerDisabled = true
+            Orientation.lock(.landscape)
+        }
+        .onDisappear {
+            UIApplication.shared.isIdleTimerDisabled = false
+            Orientation.lock(.allButUpsideDown)
+        }
         .sheet(isPresented: $showTuning) {
             TuningView().presentationDetents([.medium])
         }

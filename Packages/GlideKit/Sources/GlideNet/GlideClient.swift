@@ -67,6 +67,7 @@ public final class GlideClient: @unchecked Sendable {
             switch state {
             case .ready:
                 self.onState?(.ready)
+                self.watchForClose(c)
             case let .failed(error):
                 self.connection = nil
                 self.onState?(.failed(error.localizedDescription))
@@ -90,6 +91,21 @@ public final class GlideClient: @unchecked Sendable {
         connection = nil
         c.cancel()
         onState?(.idle)
+    }
+
+    /// We never expect data from the Mac. Reading anyway is how we find out it closed the
+    /// connection (quit, slept, rotated its PIN), instead of typing into a dead trackpad.
+    private func watchForClose(_ c: NWConnection) {
+        c.receive(minimumIncompleteLength: 1, maximumLength: 64) { [weak self, weak c] _, _, isComplete, error in
+            guard let self, let c, self.connection === c else { return }
+            if isComplete || error != nil {
+                self.connection = nil
+                c.cancel()
+                self.onState?(.failed("The Mac closed the connection."))
+            } else {
+                self.watchForClose(c)
+            }
+        }
     }
 
     public func send(_ events: [InputEvent]) {
