@@ -14,6 +14,8 @@ final class InputInjector: @unchecked Sendable {
     private var lastClickUptime: TimeInterval = 0
     private var lastClickPoint = CGPoint.zero
     private var lastClickButton: MouseButton = .left
+    private var leftDownAt: TimeInterval = 0
+    private var rightDownAt: TimeInterval = 0
 
     private var scrollRemainderX: Float = 0
     private var scrollRemainderY: Float = 0
@@ -93,6 +95,13 @@ final class InputInjector: @unchecked Sendable {
             stopMomentum() // touching the pad stops inertia, like the real thing
         } else if (b == .left && !leftDown) || (b == .right && !rightDown) {
             return
+        } else {
+            // A tap arrives as press + release in the same instant. Some controls (Safari's
+            // toolbar, tab strips) treat a zero-length press as press-and-hold or ignore it,
+            // so make every click last at least as long as a quick real one.
+            let heldFor = ProcessInfo.processInfo.systemUptime - (b == .left ? leftDownAt : rightDownAt)
+            let minimum = 0.045
+            if heldFor < minimum { usleep(UInt32((minimum - heldFor) * 1_000_000)) }
         }
 
         let p = location
@@ -121,7 +130,13 @@ final class InputInjector: @unchecked Sendable {
         if let e = CGEvent(mouseEventSource: source, mouseType: type,
                            mouseCursorPosition: p, mouseButton: cgButton) {
             e.setIntegerValueField(.mouseEventClickState, value: clickCount)
+            e.setIntegerValueField(.mouseEventButtonNumber, value: b == .left ? 0 : 1)
+            e.setDoubleValueField(.mouseEventPressure, value: down ? 1.0 : 0.0)
             e.post(tap: .cghidEventTap)
+        }
+        if down {
+            let now = ProcessInfo.processInfo.systemUptime
+            if b == .left { leftDownAt = now } else { rightDownAt = now }
         }
         if b == .left { leftDown = down } else { rightDown = down }
     }
