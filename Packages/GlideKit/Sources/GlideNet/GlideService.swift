@@ -22,9 +22,12 @@ public enum GlideService {
             tls.securityProtocolOptions,
             key.withUnsafeBytes { DispatchData(bytes: $0) } as __DispatchData,
             identity.withUnsafeBytes { DispatchData(bytes: $0) } as __DispatchData)
+        // 0x00A8 = TLS_PSK_WITH_AES_128_GCM_SHA256. Spelled as a literal because the SDK's
+        // SSLCipherSuite constant is a different integer width on different architectures,
+        // which broke universal (arm64 + x86_64) Release builds.
         sec_protocol_options_append_tls_ciphersuite(
             tls.securityProtocolOptions,
-            tls_ciphersuite_t(rawValue: TLS_PSK_WITH_AES_128_GCM_SHA256)!)
+            tls_ciphersuite_t(rawValue: 0x00A8)!)
 
         let tcp = NWProtocolTCP.Options()
         tcp.noDelay = true
