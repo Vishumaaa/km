@@ -1,61 +1,111 @@
-# Glide (working name)
+# Glide
 
-Use your iPhone as a Mac trackpad. Native Swift on both sides.
+Use your **iPhone as a trackpad for your Mac**: precise pointer movement, tap to click, right click, drag, two-finger scroll with inertia, three-finger swipes, and haptic feedback. Native Swift on both sides, over your local Wi-Fi.
 
-```
-Packages/GlideKit/
-  GlideCore   pure-Swift logic: wire protocol, gesture engine, pointer curve, scroll momentum
-  GlideNet    Network.framework transport: Bonjour discovery + TLS (PIN-derived pre-shared key)
-iOS/Glide     iPhone app: multitouch surface, Mac discovery, live "Feel" tuning sheet
-Mac/GlideMac  menu-bar companion: receives events and injects them with CGEvent
-project.yml   XcodeGen spec that generates the Xcode project for both apps
-```
-
-## Run it
-
-Requirements: Xcode 15+, an iPhone on iOS 17+, a Mac on macOS 14+, both on the same Wi-Fi.
-
-```sh
-brew install xcodegen
-xcodegen                                    # creates Glide.xcodeproj
-(cd Packages/GlideKit && swift test)        # run the core tests first
-open Glide.xcodeproj
-```
-
-1. Edit `bundleIdPrefix` and the two `PRODUCT_BUNDLE_IDENTIFIER`s in `project.yml` to something unique to you, then re-run `xcodegen`.
-2. In Xcode, for **both** targets, open *Signing & Capabilities* and pick your Team (a free Apple ID works).
-3. Run the **GlideMac** scheme on My Mac. Grant *Accessibility* access when prompted (System Settings → Privacy & Security → Accessibility). A hand icon appears in the menu bar showing a 6-digit PIN.
-4. Plug in your iPhone, enable Developer Mode (Settings → Privacy & Security), and run the **Glide** scheme on it. Allow *Local Network* access when asked.
-5. Tap your Mac in the list and enter the PIN.
-
-With a free Apple ID the iPhone build expires after 7 days; just re-run from Xcode.
+> "Glide" is a working name. This is an early, self-built project: it works, but there's no App Store release yet, so you build it yourself with Xcode (free).
 
 ## Gestures
 
 | Gesture | Action |
 |---|---|
-| One finger | Move pointer (velocity-based acceleration) |
+| One finger | Move the pointer (speed-based acceleration) |
 | Tap | Click |
 | Two-finger tap | Right click |
-| Two-finger drag | Scroll, with inertia |
 | Tap, then touch and drag | Click-and-drag (tap, tap = double click) |
-| Three-finger swipe up / down | Mission Control / App Exposé (Ctrl+Up / Ctrl+Down) |
-| Three-finger swipe left / right | Switch Space (Ctrl+Right / Ctrl+Left) |
+| Two-finger drag | Scroll, with momentum |
+| Three-finger swipe up / down | Mission Control / App Exposé |
+| Three-finger swipe left / right | Switch Space |
 
-The swipes post the stock keyboard shortcuts, so those must be enabled in System Settings → Keyboard → Keyboard Shortcuts → Mission Control.
+The trackpad screen is landscape. Tap the sliders icon (top-left) to tune sensitivity, the acceleration curve, scroll direction and haptics live.
 
-## Tuning the feel
+## Requirements
 
-Tap the sliders icon (top-left of the trackpad screen) to adjust sensitivity and the acceleration curve live.
-The defaults in `PointerAcceleration` / `GestureConfig` are educated guesses; expect to tune them.
+- A **Mac** on macOS 14 or later, with **Xcode 15+** (free, Mac App Store)
+- An **iPhone** on iOS 17 or later, and a cable
+- A free **Apple ID** (a paid developer account is *not* needed)
+- [Homebrew](https://brew.sh), to install XcodeGen
+- Mac and iPhone on the **same Wi-Fi** (no VPN, no guest or AP-isolated network)
 
-## Design notes
+Not supported yet: iPad, Android, Windows (see [Roadmap](#roadmap)).
 
-- **Acceleration lives on the phone.** Events posted with CGEvent bypass macOS pointer acceleration, and touch timestamps (which are accurate) are only available on the phone. The Mac receives whole-pixel deltas.
-- **Scroll momentum lives on the Mac.** macOS only generates inertia events for real trackpad hardware, so `ScrollMomentum` synthesizes them, driven by the release velocity the phone sends.
-- **Transport is a single TCP connection** (Nagle off, TLS-PSK). It is reliable, so a click or button release can never be lost. Next step for the lowest latency: send move/scroll over a separate UDP channel and keep buttons on TCP.
-- **Security:** only a device that knows the PIN can complete the handshake, and traffic is encrypted. After 5 failed handshakes the Mac rotates the PIN. A 6-digit PIN is low-entropy; before any public release, replace it with a random key exchanged via QR code, and store it in the Keychain.
+## Quick start
 
-## Status
+```sh
+brew install xcodegen
+git clone https://github.com/Vishumaaa/km.git
+cd km
+```
 
-Written without access to Xcode or a Swift compiler, so **nothing here has been compiled or run yet**. Expect to fix a few compile errors on first build. Start with `swift test` in `Packages/GlideKit`: the gesture, protocol, curve and momentum logic is unit-tested. The injector, transport and UI need real-device testing.
+**1. Sign into Xcode.** Open Xcode, then Settings, then Accounts, and add your Apple ID.
+
+**2. Generate the project:**
+```sh
+./scripts/setup.sh
+```
+It asks for a bundle ID prefix (anything unique, like `com.yourname`), finds your Apple Team ID, and creates `Glide.xcodeproj`. If it can't find a Team ID yet, open the project, pick your Team under *Signing & Capabilities* for both targets, build once, then re-run the script.
+
+**3. Run the Mac app.**
+```sh
+open Glide.xcodeproj
+```
+Choose the **GlideMac** scheme and **My Mac** as the destination, then press **⌘R**. A window opens showing a 6-digit **PIN**. Click **Grant Access…** and turn Glide on in System Settings, then quit and re-run it (see [Accessibility](#accessibility-permission)).
+
+**4. Run the iPhone app.** Plug in your iPhone and turn on **Developer Mode** (Settings, then Privacy & Security, then Developer Mode, then restart). Choose the **Glide** scheme and your iPhone, then press **⌘R**. Allow **Local Network** access when asked. On first install, trust yourself under Settings, General, **VPN & Device Management**.
+
+**5. Connect.** Tap your Mac in the list, enter the PIN, and drag a finger on the black screen.
+
+## Using it day to day (without Xcode)
+
+Install an optimized build of the Mac app into `/Applications`:
+```sh
+./scripts/install-mac.sh
+```
+Add it to **System Settings, General, Login Items** so it starts automatically. Re-run the script after pulling updates.
+
+On the iPhone, a build signed with a free Apple ID stops launching after **7 days**; re-run it from Xcode to refresh. Tools like AltStore can refresh it automatically, and a paid Apple Developer account ($99/year) extends this via TestFlight. For better responsiveness on the phone, set the Glide scheme's Run configuration to **Release** (Product, Scheme, Edit Scheme, Run, Build Configuration).
+
+## Accessibility permission
+
+macOS only lets an app move the cursor if you grant it **System Settings, Privacy & Security, Accessibility**. The window shows an orange warning until it's granted. After turning Glide on, **quit and reopen** the Mac app.
+
+Rebuilding can invalidate the permission. If the warning returns, run this (using your bundle ID prefix), remove Glide from the list with **−**, and grant it again:
+```sh
+tccutil reset Accessibility <your-prefix>.glide.mac
+```
+
+## Troubleshooting
+
+See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
+
+## How it works
+
+An iPhone app captures touches, runs them through a gesture engine and pointer-acceleration curve, and streams small binary messages over a TLS-encrypted TCP connection (found via Bonjour, authenticated by the PIN) to a Mac menu-bar app, which turns them into real mouse, scroll and keyboard events. Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+```
+Packages/GlideKit/   GlideCore (logic, unit-tested) and GlideNet (networking)
+iOS/Glide/           iPhone app
+Mac/GlideMac/        Mac companion app
+scripts/             setup.sh, install-mac.sh
+```
+
+## Development
+
+```sh
+cd Packages/GlideKit && swift test    # gesture, protocol, pointer-curve and momentum tests
+```
+
+## Security
+
+Traffic is encrypted (TLS 1.2, pre-shared key derived from the PIN) and only a device that knows the PIN can connect. After 5 failed attempts the Mac rotates the PIN. A 6-digit PIN is low entropy, so treat this as a home/office-network tool until pairing is upgraded (see Roadmap). Don't use it on untrusted networks.
+
+## Roadmap
+
+- iPad support
+- Stronger pairing (QR code with a random key, stored in the Keychain)
+- Lower-latency UDP channel for pointer movement
+- Signed and notarized Mac download, App Store iPhone app
+- Android and Windows clients
+
+## Contributing
+
+Issues and pull requests are welcome. Please run `swift test` before submitting.

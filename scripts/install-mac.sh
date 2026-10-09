@@ -4,6 +4,7 @@
 set -e
 cd "$(dirname "$0")/.."
 
+[ -f project.yml ] || ./scripts/setup.sh
 xcodegen
 xcodebuild \
   -project Glide.xcodeproj \

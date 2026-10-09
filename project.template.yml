@@ -1,9 +1,10 @@
-# Generates Glide.xcodeproj (iPhone app + Mac companion). Run: xcodegen
-# Then set your Team under Signing & Capabilities for BOTH targets (or put it below).
+# TEMPLATE for the Xcode project. Don't run xcodegen on this directly:
+# run ./scripts/setup.sh, which fills in your bundle ID prefix and Apple Team ID,
+# writes project.yml (git-ignored), and generates Glide.xcodeproj.
 name: Glide
 
 options:
-  bundleIdPrefix: com.example      # <- change to something you own, e.g. com.yourname
+  bundleIdPrefix: com.example      # replaced by setup.sh
   deploymentTarget:
     iOS: "17.0"
     macOS: "14.0"
@@ -11,7 +12,7 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    DEVELOPMENT_TEAM: ""           # <- your 10-character Apple team ID (optional here)
+    DEVELOPMENT_TEAM: ""           # replaced by setup.sh
     CODE_SIGN_STYLE: Automatic
 
 packages:
