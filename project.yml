@@ -1,0 +1,75 @@
+# Generates Glide.xcodeproj (iPhone app + Mac companion). Run: xcodegen
+# Then set your Team under Signing & Capabilities for BOTH targets (or put it below).
+name: Glide
+
+options:
+  bundleIdPrefix: com.example      # <- change to something you own, e.g. com.yourname
+  deploymentTarget:
+    iOS: "17.0"
+    macOS: "14.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: ""           # <- your 10-character Apple team ID (optional here)
+    CODE_SIGN_STYLE: Automatic
+
+packages:
+  GlideKit:
+    path: Packages/GlideKit
+
+targets:
+  Glide:
+    type: application
+    platform: iOS
+    sources: [iOS/Glide]
+    dependencies:
+      - package: GlideKit
+        product: GlideCore
+      - package: GlideKit
+        product: GlideNet
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.glide
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+    info:
+      path: iOS/Glide/Info.plist
+      properties:
+        CFBundleDisplayName: Glide
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        NSLocalNetworkUsageDescription: Glide connects to the Glide app on your Mac over your local network to control its pointer.
+        NSBonjourServices:
+          - _glide._tcp
+
+  GlideMac:
+    type: application
+    platform: macOS
+    sources: [Mac/GlideMac]
+    dependencies:
+      - package: GlideKit
+        product: GlideCore
+      - package: GlideKit
+        product: GlideNet
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.glide.mac
+        PRODUCT_NAME: Glide
+        ENABLE_HARDENED_RUNTIME: YES
+    entitlements:
+      path: Mac/GlideMac/GlideMac.entitlements
+      properties:
+        # Posting synthetic input requires Accessibility, which can't be sandboxed.
+        com.apple.security.app-sandbox: false
+    info:
+      path: Mac/GlideMac/Info.plist
+      properties:
+        CFBundleDisplayName: Glide
+        LSUIElement: true            # menu-bar only, no Dock icon
+        NSLocalNetworkUsageDescription: Glide accepts connections from your iPhone on your local network.
+        NSBonjourServices:
+          - _glide._tcp
