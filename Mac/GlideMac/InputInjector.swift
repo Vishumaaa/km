@@ -51,6 +51,13 @@ final class InputInjector: @unchecked Sendable {
 
     // MARK: - Pointer
 
+    /// Modifier flags for synthetic mouse events: whatever is really held (Cmd, Shift, Option),
+    /// minus Control/Fn, which we only ever synthesize ourselves. A stale Control would make
+    /// left clicks behave as right clicks.
+    private func cleanFlags() -> CGEventFlags {
+        CGEventSource.flagsState(.hidSystemState).subtracting([.maskControl, .maskSecondaryFn, .maskNumericPad])
+    }
+
     private var location: CGPoint { CGEvent(source: nil)?.location ?? .zero }
 
     private func move(dx: Int, dy: Int) {
@@ -61,6 +68,7 @@ final class InputInjector: @unchecked Sendable {
         let cgButton: CGMouseButton = rightDown ? .right : .left
         guard let e = CGEvent(mouseEventSource: source, mouseType: type,
                               mouseCursorPosition: target, mouseButton: cgButton) else { return }
+        e.flags = cleanFlags()
         e.setIntegerValueField(.mouseEventDeltaX, value: Int64(dx))
         e.setIntegerValueField(.mouseEventDeltaY, value: Int64(dy))
         e.post(tap: .cghidEventTap)
@@ -129,6 +137,7 @@ final class InputInjector: @unchecked Sendable {
 
         if let e = CGEvent(mouseEventSource: source, mouseType: type,
                            mouseCursorPosition: p, mouseButton: cgButton) {
+            e.flags = cleanFlags()
             e.setIntegerValueField(.mouseEventClickState, value: clickCount)
             e.setIntegerValueField(.mouseEventButtonNumber, value: b == .left ? 0 : 1)
             e.setDoubleValueField(.mouseEventPressure, value: down ? 1.0 : 0.0)
@@ -175,6 +184,7 @@ final class InputInjector: @unchecked Sendable {
 
         guard let e = CGEvent(scrollWheelEvent2Source: source, units: .pixel, wheelCount: 2,
                               wheel1: iy, wheel2: ix, wheel3: 0) else { return }
+        e.flags = cleanFlags()
         e.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
         e.setIntegerValueField(.scrollWheelEventScrollPhase, value: phase)
         e.setIntegerValueField(.scrollWheelEventMomentumPhase, value: momentumPhase)
@@ -230,6 +240,12 @@ final class InputInjector: @unchecked Sendable {
 
     // MARK: - System gestures (via the stock keyboard shortcuts)
 
+    private func postKey(_ code: CGKeyCode, down: Bool, flags: CGEventFlags) {
+        guard let e = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: down) else { return }
+        e.flags = flags
+        e.post(tap: .cghidEventTap)
+    }
+
     private func perform(_ action: SystemAction) {
         let key: CGKeyCode
         switch action {
@@ -238,10 +254,14 @@ final class InputInjector: @unchecked Sendable {
         case .spaceLeft: key = 123      // Ctrl+Left
         case .spaceRight: key = 124     // Ctrl+Right
         }
-        for keyDown in [true, false] {
-            guard let e = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: keyDown) else { continue }
-            e.flags = [.maskControl, .maskSecondaryFn]
-            e.post(tap: .cghidEventTap)
-        }
+        // Press and release Control like a real keyboard would. Posting arrow keys that merely
+        // carry a Control flag leaves macOS believing Control is still down, and it then stamps
+        // that flag onto later clicks, which turns every left click into a right click.
+        let controlKey: CGKeyCode = 59
+        let arrowFlags: CGEventFlags = [.maskControl, .maskSecondaryFn]
+        postKey(controlKey, down: true, flags: .maskControl)
+        postKey(key, down: true, flags: arrowFlags)
+        postKey(key, down: false, flags: arrowFlags)
+        postKey(controlKey, down: false, flags: [])
     }
 }
