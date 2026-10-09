@@ -10,13 +10,12 @@ final class TouchSurfaceView: UIView {
     private var pipeline = TrackpadPipeline()
     private var ids: [ObjectIdentifier: Int] = [:]
     private var nextID = 0
-    private let haptics = UIImpactFeedbackGenerator(style: .light)
+    private let haptics = Haptics()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
         isMultipleTouchEnabled = true
         backgroundColor = .black
-        haptics.prepare()
         applyTuning()
     }
 
@@ -27,6 +26,13 @@ final class TouchSurfaceView: UIView {
         pipeline.acceleration.lowGain = tuning.lowGain
         pipeline.acceleration.highGain = tuning.highGain
         pipeline.acceleration.kneeSpeed = tuning.kneeSpeed
+        haptics.enabled = tuning.hapticsEnabled
+        haptics.strength = tuning.hapticStrength
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window != nil { haptics.prepare() }
     }
 
     // MARK: - UIKit touches
@@ -94,10 +100,7 @@ final class TouchSurfaceView: UIView {
 
     private func send(_ events: [InputEvent]) {
         guard !events.isEmpty else { return }
-        if events.contains(.button(.left, down: true)) || events.contains(.button(.right, down: true)) {
-            haptics.impactOccurred()
-            haptics.prepare()
-        }
+        haptics.play(for: events)
         var out = events
         if !tuning.naturalScrolling {
             out = events.map { event -> InputEvent in

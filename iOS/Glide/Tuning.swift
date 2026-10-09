@@ -7,8 +7,25 @@ struct Tuning: Codable, Equatable {
     var highGain: Float = 5.0
     var kneeSpeed: Float = 600
     var naturalScrolling = true
+    var hapticsEnabled = true
+    var hapticStrength: Float = 1.0
 
     private static let key = "tuning.v1"
+
+    init() {}
+
+    /// Tolerant decoding, so settings saved by older versions still load when fields are added.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = Tuning()
+        sensitivity = try c.decodeIfPresent(Float.self, forKey: .sensitivity) ?? d.sensitivity
+        lowGain = try c.decodeIfPresent(Float.self, forKey: .lowGain) ?? d.lowGain
+        highGain = try c.decodeIfPresent(Float.self, forKey: .highGain) ?? d.highGain
+        kneeSpeed = try c.decodeIfPresent(Float.self, forKey: .kneeSpeed) ?? d.kneeSpeed
+        naturalScrolling = try c.decodeIfPresent(Bool.self, forKey: .naturalScrolling) ?? d.naturalScrolling
+        hapticsEnabled = try c.decodeIfPresent(Bool.self, forKey: .hapticsEnabled) ?? d.hapticsEnabled
+        hapticStrength = try c.decodeIfPresent(Float.self, forKey: .hapticStrength) ?? d.hapticStrength
+    }
 
     static func load() -> Tuning {
         guard let data = UserDefaults.standard.data(forKey: key),

@@ -123,6 +123,12 @@ struct TuningView: View {
                 Section("Scrolling") {
                     Toggle("Natural scrolling", isOn: $app.tuning.naturalScrolling)
                 }
+                Section("Haptics") {
+                    Toggle("Haptic feedback", isOn: $app.tuning.hapticsEnabled)
+                    if app.tuning.hapticsEnabled {
+                        slider("Strength", value: $app.tuning.hapticStrength, range: 0.2...1)
+                    }
+                }
                 Section {
                     Button("Reset to defaults", role: .destructive) { app.tuning = Tuning() }
                 }
