@@ -85,7 +85,7 @@ An iPhone app captures touches, runs them through a gesture engine and pointer-a
 Packages/GlideKit/   GlideCore (logic, unit-tested) and GlideNet (networking)
 iOS/Glide/           iPhone app
 Mac/GlideMac/        Mac companion app
-scripts/             setup.sh, install-mac.sh
+scripts/             setup.sh, install-mac.sh, make-icon.py (regenerates the app icon)
 ```
 
 ## Development
