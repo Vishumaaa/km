@@ -33,6 +33,15 @@ final class AppState: ObservableObject {
         // Stored in UserDefaults for now; move to the Keychain before shipping.
         UserDefaults.standard.set(pin, forKey: pinKey(mac))
         client.connect(to: mac.endpoint, pin: pin)
+
+        // Don't hang forever on a bad PIN, a sleeping Mac, or a blocked network.
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 10_000_000_000)
+            if self.connection == .connecting {
+                self.client.disconnect()
+                self.handle(.failed("Timed out"))
+            }
+        }
     }
 
     func disconnect() {

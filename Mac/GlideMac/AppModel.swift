@@ -29,12 +29,15 @@ final class AppModel: ObservableObject {
         server.onEvents = { events in injector.handle(events) }
         server.onDisconnect = { injector.releaseAll() }
         server.onStatus = { [weak self] status in
+            print("Glide: server status \(status)")
             Task { @MainActor in self?.status = status }
         }
         server.onFailedHandshake = { [weak self] in
+            print("Glide: a device failed the PIN handshake")
             Task { @MainActor in self?.noteFailedHandshake() }
         }
         startServer()
+        print("Glide: PIN is \(pin)")
 
         // Accessibility can be granted at any time in System Settings; keep the UI honest.
         Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
@@ -58,7 +61,9 @@ final class AppModel: ObservableObject {
     private func startServer() {
         do {
             try server.start(pin: pin, name: Host.current().localizedName ?? "Mac")
+            print("Glide: server starting, PIN \(pin)")
         } catch {
+            print("Glide: server failed to start: \(error)")
             status = .failed(error.localizedDescription)
         }
     }

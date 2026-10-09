@@ -38,7 +38,10 @@ struct DiscoveryView: View {
                 }
 
                 if app.connection == .connecting {
-                    Section { HStack(spacing: 10) { ProgressView(); Text("Connecting…") } }
+                    Section {
+                        HStack(spacing: 10) { ProgressView(); Text("Connecting…") }
+                        Button("Cancel", role: .cancel) { app.disconnect() }
+                    }
                 }
                 if let message = app.errorMessage {
                     Section { Text(message).foregroundStyle(.red) }

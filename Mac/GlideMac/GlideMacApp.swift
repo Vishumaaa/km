@@ -4,6 +4,9 @@ import GlideNet
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Show a Dock icon and a real window too: menu-bar icons can be hidden by the notch.
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
         AppModel.shared.start()
     }
 }
@@ -13,6 +16,11 @@ struct GlideMacApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
     var body: some Scene {
+        Window("Glide", id: "main") {
+            MenuView(model: AppModel.shared)
+        }
+        .windowResizability(.contentSize)
+
         MenuBarExtra("Glide", systemImage: "hand.point.up.left.fill") {
             MenuView(model: AppModel.shared)
         }
