@@ -19,6 +19,30 @@ packages:
   GlideKit:
     path: Packages/GlideKit
 
+# Explicit schemes: guarantees "Glide" and "GlideMac" exist (xcodebuild and install-mac.sh need
+# them) and builds optimized Release code by default, which feels noticeably smoother.
+schemes:
+  Glide:
+    build:
+      targets:
+        Glide: all
+    run:
+      config: Release
+    profile:
+      config: Release
+    archive:
+      config: Release
+  GlideMac:
+    build:
+      targets:
+        GlideMac: all
+    run:
+      config: Release
+    profile:
+      config: Release
+    archive:
+      config: Release
+
 targets:
   Glide:
     type: application
