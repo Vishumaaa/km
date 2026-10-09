@@ -34,10 +34,19 @@ final class AppModel: ObservableObject {
         }
         server.onEvents = { [weak self] events in
             injector.handle(events)
-            for case let .button(button, down) in events {
-                let line = "button \(button) \(down ? "down" : "up")"
-                print("Glide: \(line)")
-                Task { @MainActor in self?.appendLog(line) }
+            for event in events {
+                var line: String?
+                switch event {
+                case let .button(button, down): line = "button \(button) \(down ? "down" : "up")"
+                case .scroll(_, _, .began): line = "scroll began"
+                case .scroll(_, _, .ended): line = "scroll ended"
+                case let .action(action): line = "action \(action)"
+                default: break
+                }
+                if let line {
+                    print("Glide: \(line)")
+                    Task { @MainActor in self?.appendLog(line) }
+                }
             }
         }
         server.onDisconnect = { injector.releaseAll() }

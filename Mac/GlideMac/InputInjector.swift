@@ -185,6 +185,9 @@ final class InputInjector: @unchecked Sendable {
         guard let e = CGEvent(scrollWheelEvent2Source: source, units: .pixel, wheelCount: 2,
                               wheel1: iy, wheel2: ix, wheel3: 0) else { return }
         e.flags = cleanFlags()
+        // Pin the event to the pointer. Without an explicit location, browser-based apps
+        // (Electron, Chromium) can't tell which view the scroll belongs to and drop it.
+        e.location = location
         e.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
         e.setIntegerValueField(.scrollWheelEventScrollPhase, value: phase)
         e.setIntegerValueField(.scrollWheelEventMomentumPhase, value: momentumPhase)
